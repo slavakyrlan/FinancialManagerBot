@@ -11,13 +11,13 @@ def create_tables():
     cur.execute('''
                 CREATE TABLE IF NOT EXISTS clients(
                     id INTEGER PRIMARY KEY,
-                    telegram_id TEXT NOT NULL UNIQUE
+                    telegram_id TEXT NOT NULL
                 )
     ''')
     cur.execute('''
                 CREATE TABLE IF NOT EXISTS categories(
                     id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL
+                    name TEXT NOT NULL UNIQUE
                 )
     ''')
     cur.execute('''
