@@ -66,15 +66,14 @@ def income_action(message):
 
 def process_income_action(message):
     if message.text == "Добавить":
-        bot.send_message(message.chat.id, "Введите сумму дохода:")
+        hide_keyboard = types.ReplyKeyboardRemove()
+        bot.send_message(message.chat.id, "Введите сумму дохода:",
+                         reply_markup=hide_keyboard)
         bot.register_next_step_handler(message, process_income_amount)
-
     elif message.text == "Редактировать":
         edit_income(message)
     elif message.text == "Удалить":
         delete_income(message)
-        #bot.send_message(message.chat.id, "Введите индекс дохода для удаления:")
-        #bot.register_next_step_handler(message, delete_income)
     elif message.text == "Назад":
         start(message)
 
@@ -101,11 +100,6 @@ def add_income(amount, description, client_id):
                 (amount, description, client_id) VALUES (?, ?, ?)''',
                 (amount, description, client_id))
     con.commit()
-
-
-def add_income_handler(message):
-    bot.send_message(message.chat.id, "Введите сумму дохода:")
-    bot.register_next_step_handler(message, process_income_amount)
 
 
 def process_income_amount(message):
@@ -140,8 +134,10 @@ def edit_income(message):
                     f"Описание: {record[2]}, " \
                     f"Дата: {record[3]}\n"
     bot.send_message(message.chat.id, response)
+    hide_keyboard = types.ReplyKeyboardRemove()
     bot.send_message(message.chat.id,
-                     "Введите ID записи, которую хотите редактировать:")
+                     "Введите ID записи, которую хотите редактировать:",
+                     reply_markup=hide_keyboard)
     bot.register_next_step_handler(message, process_edit_id)
 
 
@@ -196,8 +192,10 @@ def delete_income(message):
                     f"Описание: {record[2]}, " \
                     f"Дата: {record[3]}\n"
     bot.send_message(message.chat.id, response)
+    hide_keyboard = types.ReplyKeyboardRemove()
     bot.send_message(message.chat.id,
-                     "Введите ID записи, которую хотите удалить:")
+                     "Введите ID записи, которую хотите удалить:",
+                     reply_markup=hide_keyboard)
     bot.register_next_step_handler(message, process_delete_id)
 
 
@@ -217,6 +215,7 @@ def process_delete_id(message):
     con.commit()
     bot.send_message(message.chat.id, "Доход успешно удален!")
     start(message)
+
 
 def main():
     bot.polling(none_stop=True)
