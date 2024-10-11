@@ -2,6 +2,9 @@ import logging
 import os
 import sqlite3
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import requests
 
@@ -513,11 +516,10 @@ def handle_format_selection(message, user_periods):
     if selected_format == "Таблица":
         show_table_statistics(message, user_periods)
     elif selected_format == "Диаграмма":
+        #show_chart_statistics(message, user_periods)
         print(1)
-        #show_chart_statistics(message, user_period)
     elif selected_format == "График":
-        print(1)
-        #show_graph_statistics(message, user_period)
+        show_graph_statistics(message, user_periods)
     else:
         bot.send_message(message.chat.id, "Неверный выбор формата. Пожалуйста, выберите снова.")
         handle_period_selection(message, user_periods)
@@ -541,6 +543,45 @@ def show_table_statistics(message, user_periods):
         bot.send_document(message.chat.id, file)
         bot.send_message(message.chat.id,
                          "Топ 5 крупных затрат за указанный период отправлен.")
+    os.remove(file_name)
+    start(message)
+
+
+def show_graph_statistics(message, user_periods):
+    client_id = message.chat.id
+    choice_expenses = pd.read_sql_query(
+        f"""
+        SELECT amount, description, date_added
+        FROM expenses 
+        WHERE date_added >= datetime('now', '{user_periods}') 
+            AND client_id = {client_id} 
+        """, con)
+    choice_expenses['date_added'] = pd.to_datetime(
+        choice_expenses['date_added'])
+    choice_expenses['amount'] = pd.to_numeric(choice_expenses['amount'],
+                                              errors='coerce')
+
+    file_name = 'expenses.xlsx'
+    choice_expenses.to_excel(file_name, index=True)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(choice_expenses['date_added'], choice_expenses['amount'],
+             marker='o',
+             color='skyblue')
+    plt.xlabel('Дата')
+    plt.ylabel('Сумма, руб')
+    plt.title(f'Расход за выбранный период')
+    plt.grid(axis='x')
+
+    graph_file_name = 'choice_expenses_graph.png'
+    plt.savefig(graph_file_name)
+    plt.close()
+
+    with open(graph_file_name, 'rb') as graph_file:
+        bot.send_photo(message.chat.id, graph_file)
+        bot.send_message(message.chat.id, "График крупных затрат отправлен.")
+    os.remove(file_name)
+    os.remove(graph_file_name)
     start(message)
 
 
