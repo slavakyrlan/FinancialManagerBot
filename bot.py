@@ -1,6 +1,7 @@
 import logging
 import os
 import sqlite3
+import pandas as pd
 
 import requests
 
@@ -47,10 +48,7 @@ def handle_option(message):
     elif message.text == "Расход":
         expense_action(message)
     elif message.text == "Статистика":
-        bot.send_message(
-            chat_id=message.chat.id,
-            text="Введите промежуток дат в формате: "
-                 "'YYYY-MM-DD to YYYY-MM-DD'")
+        ask_period(message)
 
 
 def income_action(message):
@@ -471,6 +469,78 @@ def process_delete_id_expense(message):
         (income_id,))
     con.commit()
     bot.send_message(message.chat.id, "Расход успешно удален!")
+    start(message)
+
+
+periods = {
+    'День': 'day',
+    'Неделя': 'week',
+    'Месяц': 'month',
+    'Квартал': 'quarter',
+    'Год': 'year'
+}
+
+
+def ask_period(message):
+    markup = types.ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        one_time_keyboard=True)
+    markup.add(*list(periods.keys()))
+    bot.send_message(message.chat.id,
+                     "Выберите период:",
+                     reply_markup=markup)
+
+
+@bot.message_handler(
+    func=lambda message: message.text in list(periods.keys()))
+def handle_period_selection(message):
+    user_periods = periods.get(message.text)
+    markup = types.ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        one_time_keyboard=True)
+
+    markup.add("Таблица", "Диаграмма", "График")
+    bot.send_message(message.chat.id,
+                     "Выберите формат отображения:",
+                     reply_markup=markup)
+    bot.register_next_step_handler(message, handle_format_selection,
+                                   user_periods)
+
+
+def handle_format_selection(message, user_period):
+    selected_format = message.text
+
+    if selected_format == "Таблица":
+        show_table_statistics(message, user_period)
+    elif selected_format == "Диаграмма":
+        print(1)
+        #show_chart_statistics(message, user_period)
+    elif selected_format == "График":
+        print(1)
+        #show_graph_statistics(message, user_period)
+    else:
+        bot.send_message(message.chat.id, "Неверный выбор формата. Пожалуйста, выберите снова.")
+        handle_period_selection(message, user_period)
+
+
+def show_table_statistics(message, user_period):
+    client_id = message.chat.id
+    top_expenses = pd.read_sql_query(
+        f"""
+        SELECT amount, description, date_added
+        FROM expenses
+        WHERE date_added >= datetime('now', '-1 {user_period}') 
+        AND client_id = {client_id}
+        ORDER BY amount DESC
+        LIMIT 5
+        """, con)
+    file_name = 'top_expenses.xlsx'
+    top_expenses.to_excel(file_name, index=True)
+
+    with open(file_name, 'rb') as file:
+        bot.send_document(message.chat.id, file)
+        bot.send_message(message.chat.id,
+                         "Топ 5 крупных затрат за указанный период отправлен.")
     start(message)
 
 
