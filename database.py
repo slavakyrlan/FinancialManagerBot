@@ -16,7 +16,7 @@ def create_tables():
     ''')
     cur.execute('''
                 CREATE TABLE IF NOT EXISTS categories(
-                    id INTEGER PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE
                 )
     ''')

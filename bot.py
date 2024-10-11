@@ -46,7 +46,6 @@ def handle_option(message):
         income_action(message)
     elif message.text == "Расход":
         expense_action(message)
-        #print('Расход')
     elif message.text == "Статистика":
         bot.send_message(
             chat_id=message.chat.id,
@@ -344,9 +343,11 @@ def add_expense(amount, description, category_id, client_id):
 def edit_expense(message):
     cur.execute(
         '''
-        SELECT id, amount, category_id, description, date_added FROM expenses 
-        WHERE client_id = ?
-        ORDER BY id DESC 
+        SELECT e.id, e.amount, c.name AS category_name, e.description, e.date_added 
+        FROM expenses e 
+        JOIN categories c ON e.category_id = c.id 
+        WHERE e.client_id = ?
+        ORDER BY e.id DESC 
         LIMIT 10
         ''', (message.chat.id,))
 
@@ -423,6 +424,53 @@ def finalize_edit_expense(message, expense_id, new_amount, new_description):
         (new_amount, new_description, new_category, expense_id))
     con.commit()
     bot.send_message(message.chat.id, "Доход успешно обновлен!")
+    start(message)
+
+
+def delete_expense(message):
+    cur.execute(
+        '''
+        SELECT e.id, e.amount, c.name AS category_name, e.description, e.date_added 
+        FROM expenses e 
+        JOIN categories c ON e.category_id = c.id 
+        WHERE e.client_id = ?
+        ORDER BY e.id DESC 
+        LIMIT 10
+        ''', (message.chat.id,)
+    )
+    list_income = cur.fetchall()
+    if not list_income:
+        bot.send_message(message.chat.id, "Нет записей для удаления.")
+        return
+    response = "Последние 10 записей:\n"
+    for record in list_income:
+        response += f"ID: {record[0]}, " \
+                    f"Сумма: {record[1]}, " \
+                    f"Описание: {record[2]}, " \
+                    f"Дата: {record[3]}\n"
+    bot.send_message(message.chat.id, response)
+    hide_keyboard = types.ReplyKeyboardRemove()
+    bot.send_message(message.chat.id,
+                     "Введите ID записи, которую хотите удалить:",
+                     reply_markup=hide_keyboard)
+    bot.register_next_step_handler(message, process_delete_id_expense)
+
+
+def process_delete_id_expense(message):
+    income_id = int(message.text)
+    cur.execute('SELECT * FROM expenses WHERE id = ?', (income_id,))
+    choice_income = cur.fetchone()
+    if not choice_income:
+        bot.send_message(message.chat.id, "Запись с таким ID не найдена.")
+        return
+    cur.execute(
+        '''
+            DELETE FROM expenses
+            WHERE id = ?
+        ''',
+        (income_id,))
+    con.commit()
+    bot.send_message(message.chat.id, "Расход успешно удален!")
     start(message)
 
 
