@@ -1,15 +1,13 @@
 import logging
 import os
-import sqlite3
-import pandas as pd
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
-import requests
-
+import pandas as pd
 from dotenv import load_dotenv
 from telebot import TeleBot, types
+
 from database import db_connect
 
 load_dotenv()
@@ -516,8 +514,7 @@ def handle_format_selection(message, user_periods):
     if selected_format == "Таблица":
         show_table_statistics(message, user_periods)
     elif selected_format == "Диаграмма":
-        #show_chart_statistics(message, user_periods)
-        print(1)
+        show_chart_statistics(message, user_periods)
     elif selected_format == "График":
         show_graph_statistics(message, user_periods)
     else:
@@ -579,10 +576,54 @@ def show_graph_statistics(message, user_periods):
 
     with open(graph_file_name, 'rb') as graph_file:
         bot.send_photo(message.chat.id, graph_file)
-        bot.send_message(message.chat.id, "График крупных затрат отправлен.")
+    total_expenses = choice_expenses['amount'].sum()
+    bot.send_message(message.chat.id, f"Всего расходов за выбранный период: {total_expenses}")
     os.remove(file_name)
     os.remove(graph_file_name)
     start(message)
+
+
+def show_chart_statistics(message, user_periods):
+    client_id = message.chat.id
+    category_expenses = pd.read_sql_query(
+        f"""
+        SELECT SUM(amount) as total_amount, category_id 
+        FROM expenses 
+        WHERE date_added >= datetime('now', '{user_periods}') 
+            AND client_id = {client_id} 
+        GROUP BY category_id""", con)
+    # Получаем категории по id
+    category_expenses['category'] = category_expenses['category_id'].apply(
+        get_category_name)
+    plt.figure(figsize=(10, 6))
+    plt.pie(
+        category_expenses['total_amount'],
+        # названия категорий
+        labels=category_expenses['category'],
+        autopct='%.1f%%',
+    )
+    plt.title('Распределение расходов по категориям')
+    plt.axis('equal')
+
+    graph_file_name = 'category_expenses_graph.png'
+    plt.savefig(graph_file_name)
+    plt.close()
+
+    with open(graph_file_name, 'rb') as graph_file:
+        bot.send_photo(message.chat.id, graph_file)
+
+    total_expenses = category_expenses['total_amount'].sum()
+    bot.send_message(message.chat.id,
+                     f"Всего расходов за выбранный период: {total_expenses}")
+    os.remove(graph_file_name)
+    start(message)
+
+
+def get_category_name(category_id):
+    """Функция для получения названия категории по ID"""
+    cur.execute('SELECT name FROM categories WHERE id = ?', (category_id,))
+    result = cur.fetchone()
+    return result[0]
 
 
 def main():
