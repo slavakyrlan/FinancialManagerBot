@@ -473,11 +473,11 @@ def process_delete_id_expense(message):
 
 
 periods = {
-    'День': 'day',
-    'Неделя': 'week',
-    'Месяц': 'month',
-    'Квартал': 'quarter',
-    'Год': 'year'
+    'День': '-1 day',
+    'Неделя': '-7 day',
+    'Месяц': '-1 month',
+    'Квартал': '-3 month',
+    'Год': '-1 year'
 }
 
 
@@ -507,11 +507,11 @@ def handle_period_selection(message):
                                    user_periods)
 
 
-def handle_format_selection(message, user_period):
+def handle_format_selection(message, user_periods):
     selected_format = message.text
 
     if selected_format == "Таблица":
-        show_table_statistics(message, user_period)
+        show_table_statistics(message, user_periods)
     elif selected_format == "Диаграмма":
         print(1)
         #show_chart_statistics(message, user_period)
@@ -520,17 +520,17 @@ def handle_format_selection(message, user_period):
         #show_graph_statistics(message, user_period)
     else:
         bot.send_message(message.chat.id, "Неверный выбор формата. Пожалуйста, выберите снова.")
-        handle_period_selection(message, user_period)
+        handle_period_selection(message, user_periods)
 
 
-def show_table_statistics(message, user_period):
+def show_table_statistics(message, user_periods):
     client_id = message.chat.id
     top_expenses = pd.read_sql_query(
         f"""
         SELECT amount, description, date_added
         FROM expenses
-        WHERE date_added >= datetime('now', '-1 {user_period}') 
-        AND client_id = {client_id}
+        WHERE date_added >= datetime('now', '{user_periods}') 
+            AND client_id = {client_id}
         ORDER BY amount DESC
         LIMIT 5
         """, con)
