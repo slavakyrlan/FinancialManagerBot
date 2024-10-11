@@ -25,7 +25,7 @@ def create_tables():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     amount REAL NOT NULL,
                     description TEXT,
-                    date_added TEXT DEFAULT (datetime('now')),
+                    date_added TEXT DEFAULT (datetime('now', '+3 hours')),
                     client_id INTEGER,
                     FOREIGN KEY (client_id) REFERENCES clients(id)
                 )
@@ -35,7 +35,7 @@ def create_tables():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     amount REAL NOT NULL,
                     description TEXT,
-                    date_added TEXT DEFAULT (datetime('now')),
+                    date_added TEXT DEFAULT (datetime('now', '+3 hours')),
                     category_id INTEGER,
                     client_id INTEGER,
                     FOREIGN KEY (category_id) REFERENCES categories(id),
