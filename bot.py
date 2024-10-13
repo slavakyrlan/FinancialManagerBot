@@ -7,9 +7,20 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 from telebot import TeleBot, types
+from typing import Literal
 
-from db_functions import *
-from strings import *
+from db_functions import (db_connect, sql_all_category, sql_delete_expense,
+                          sql_delete_income, sql_for_chart, sql_for_graph,
+                          sql_for_table, sql_insert_category,
+                          sql_insert_expense, sql_insert_incomes,
+                          sql_update_expense, sql_records_10_expense,
+                          sql_records_10_incomes, sql_select_all_expenses_user,
+                          sql_select_all_incomes_user, sql_select_category,
+                          sql_select_id_category, sql_select_name_category,
+                          sql_update_income, add_user)
+from strings import (DELETE_RECORDS_ID, EDIT_RECORDS_ID, ERROR_NUMBER,
+                     ERROR_NUMBER_ID, ERROR_RECORD_EXPENSE, ERROR_RECORDS_ID,
+                     RETURN_MENU, HELP_MSG)
 
 matplotlib.use('Agg')
 load_dotenv()
@@ -25,7 +36,7 @@ logging.basicConfig(
 )
 
 BUTTONS = ['Доход', 'Расход', 'Статистика']
-periods = {
+PERIODS = {
     'День': '-1 day',
     'Неделя': '-7 day',
     'Месяц': '-1 month',
@@ -41,7 +52,7 @@ con = db_connect()
 
 
 @bot.message_handler(commands=['start'])
-def start(message):
+def start(message: types.Message) -> None:
     """Стартовое сообщение"""
     name = message.from_user.first_name
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -55,14 +66,14 @@ def start(message):
     add_user(message.chat.id)
 
 
-def add_user(telegram_id):
-    user = sql_select_user_id(telegram_id)
-    if user is None:
-        sql_insert_user_id(telegram_id)
+@bot.message_handler(commands=['help'])
+def help_commands(message: types.Message) -> None:
+    """Помощь"""
+    bot.reply_to(message, HELP_MSG)
 
 
 @bot.message_handler(func=lambda message: message.text in BUTTONS)
-def handle_option(message):
+def handle_option(message: types.Message) -> None:
     """Меню бота"""
     if message.text == 'Доход':
         send_action_keyboard(message, 'income')
@@ -72,17 +83,18 @@ def handle_option(message):
         ask_period(message)
 
 
-def send_action_keyboard(message, action_type):
+def send_action_keyboard(message: types.Message,
+                         action_type: Literal['income', 'expense']) -> None:
     """Кнопки у Дохода/Расхода"""
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
     if action_type == 'income':
         keyboard.add('Добавить', 'Редактировать', 'Удалить', 'Назад')
-        text = INCOMES_ACTION
+        text = 'Введите сумму дохода:'
     elif action_type == 'expense':
         keyboard.add('Добавить', 'Редактировать', 'Удалить',
                      'Добавить категорию', 'Назад')
-        text = EXPENSES_ACTION
+        text = 'Выберите действие с расходом:'
     else:
         return start(message)
 
@@ -98,8 +110,8 @@ def process_action(message, action_type):
     """Функции для Дохода/Расхода"""
     if message.text == 'Добавить':
         hide_keyboard = types.ReplyKeyboardRemove()
-        text = EXPENSES_ADD_AMOUNT if \
-            action_type == 'expense' else INCOMES_ADD_AMOUNT
+        text = 'Введите сумму расходов:' if \
+            action_type == 'expense' else 'Введите сумму дохода:'
         bot.send_message(message.chat.id, text, reply_markup=hide_keyboard)
         bot.register_next_step_handler(message, adding_records, action_type)
     elif message.text == 'Редактировать':
@@ -113,6 +125,9 @@ def process_action(message, action_type):
     elif message.text == 'Добавить категорию':
         add_category(message)
     elif message.text == 'Назад':
+        start(message)
+    else:
+        bot.send_message(message.chat.id, 'Таких функций нет')
         start(message)
 
 
@@ -133,7 +148,7 @@ def adding_records(message, action_type):
     except ValueError:
         bot.send_message(
             message.chat.id,
-            ERROR_AMOUNT)
+            'Ошибка, вы отправили некорректную сумму.')
         start(message)
 
 
@@ -141,7 +156,7 @@ def add_category(message):
     """Добавление новой категории"""
     hide_keyboard = types.ReplyKeyboardRemove()
     bot.send_message(
-        message.chat.id, CATEGORY_ADD,
+        message.chat.id, 'Введите новую категорию:',
         reply_markup=hide_keyboard)
 
     def handle_new_category(msg):
@@ -174,7 +189,8 @@ def edit_income(message):
     """Лист последних 10 записей дохода -> изменение записи"""
     list_income = sql_records_10_incomes(message.chat.id)
     if not list_income:
-        bot.send_message(message.chat.id, EMPTY_RECORDS)
+        bot.send_message(message.chat.id,
+                         'Нет записей для редактирования.')
         return start(message)
     response = 'Последние 10 записей:\n'
     for record in list_income:
@@ -207,7 +223,7 @@ def edit_income_by_id(message):
     if not choice_income:
         bot.send_message(message.chat.id, ERROR_RECORDS_ID)
         return edit_income(message)
-    bot.send_message(message.chat.id, AMOUNT_NEW)
+    bot.send_message(message.chat.id, 'Введите новую сумму:')
     bot.register_next_step_handler(message, process_new_amount, income_id)
 
 
@@ -220,7 +236,7 @@ def process_new_amount(message, income_id):
     except ValueError:
         bot.send_message(message.chat.id, ERROR_NUMBER)
         return edit_income(message)
-    bot.send_message(message.chat.id, DESCRIPTION_NEW)
+    bot.send_message(message.chat.id, 'Введите новое описание:')
     bot.register_next_step_handler(message, finalize_edit, income_id,
                                    new_amount)
 
@@ -426,10 +442,12 @@ def delete_expense(message):
         return start(message)
     response = 'Последние 10 записей:\n'
     for record in list_income:
+        print(record)
         response += f'ID: {record[0]}, ' \
                     f'Сумма: {record[1]}, ' \
                     f'Описание: {record[2]}, ' \
-                    f'Дата: {record[3]}\n'
+                    f'Категория: {record[3]}'\
+                    f'Дата: {record[4]}\n'
     bot.send_message(message.chat.id, response)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(RETURN_MENU)
@@ -464,17 +482,17 @@ def ask_period(message):
     markup = types.ReplyKeyboardMarkup(
         resize_keyboard=True,
         one_time_keyboard=True)
-    markup.add(*list(periods.keys()))
+    markup.add(*list(PERIODS.keys()))
     bot.send_message(message.chat.id,
                      'Выберите период:',
                      reply_markup=markup)
 
 
 @bot.message_handler(
-    func=lambda message: message.text in list(periods.keys()))
+    func=lambda message: message.text in list(PERIODS.keys()))
 def handle_period_selection(message):
     """Кнопки для выбора периода для получения статистики по Расходам"""
-    user_periods = periods.get(message.text)
+    user_periods = PERIODS.get(message.text)
     markup = types.ReplyKeyboardMarkup(
         resize_keyboard=True,
         one_time_keyboard=True)

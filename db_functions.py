@@ -4,8 +4,6 @@ con = db_connect()
 cur = con.cursor()
 
 
-
-
 def sql_select_user_id(user_id):
     cur.execute(
         '''
@@ -108,8 +106,8 @@ def sql_delete_income(income_id, user_id):
     cur.execute(
         '''
         DELETE FROM incomes
-        WHERE id = ?, client_id = ?
-        ''', (income_id, user_id,))
+        WHERE id = ? AND client_id = ?
+        ''', (income_id, user_id))
     con.commit()
 
 
@@ -159,7 +157,7 @@ def sql_delete_expense(expense_id, user_id):
     cur.execute(
         '''
         DELETE FROM expenses
-        WHERE id = ?, client_id = ?
+        WHERE id = ? AND client_id = ?
         ''', (expense_id, user_id,))
     con.commit()
 
@@ -199,3 +197,9 @@ def sql_for_chart(periods, user_id):
         GROUP BY category_id
         '''
     )
+
+
+def add_user(telegram_id):
+    user = sql_select_user_id(telegram_id)
+    if user is None:
+        sql_insert_user_id(telegram_id)
