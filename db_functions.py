@@ -204,7 +204,7 @@ def sql_for_graph_incomes(user_id):
         f'''
         SELECT amount, description, date_added
         FROM incomes
-        WHERE date_added >= datetime("now", "-1 month")
+        WHERE date_added >= datetime("now", "start of month")
         AND client_id = {user_id}
         '''
     )

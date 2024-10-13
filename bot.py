@@ -38,11 +38,11 @@ logging.basicConfig(
 
 BUTTONS = ['Доход', 'Расход', 'Статистика доходов', 'Статистика расходов']
 PERIODS = {
-    'День': '-1 day',
+    'День': 'start of day',
     'Неделя': '-7 day',
-    'Месяц': '-1 month',
+    'Месяц': 'start of month',
     'Квартал': '-3 month',
-    'Год': '-1 year'
+    'Год': 'start of year'
 }
 ALL_CONTENT_TYPES = ['text', 'photo', 'sticker', 'document', 'video',
                      'audio', 'voice', 'location', 'contact', 'poll',
