@@ -199,7 +199,24 @@ def sql_for_chart(periods, user_id):
     )
 
 
+def sql_for_graph_incomes(user_id):
+    return (
+        f'''
+        SELECT amount, description, date_added
+        FROM incomes
+        WHERE date_added >= datetime("now", "-1 month")
+        AND client_id = {user_id}
+        '''
+    )
+
+
 def add_user(telegram_id):
     user = sql_select_user_id(telegram_id)
     if user is None:
         sql_insert_user_id(telegram_id)
+
+
+def get_category_name(category_id):
+    """Функция для получения названия категории по ID"""
+    result = sql_select_name_category(category_id)
+    return result[0] if result else 'Неизвестная категория'
