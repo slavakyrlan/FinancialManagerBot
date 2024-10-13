@@ -12,13 +12,13 @@ from telebot import TeleBot, types
 from db_functions import (add_user, db_connect, get_category_name,
                           sql_all_category, sql_delete_expense,
                           sql_delete_income, sql_for_chart, sql_for_graph,
-                          sql_for_table, sql_insert_category,
-                          sql_insert_expense, sql_insert_incomes,
-                          sql_records_10_expense, sql_records_10_incomes,
-                          sql_select_all_expenses_user,
+                          sql_for_graph_incomes, sql_for_table,
+                          sql_insert_category, sql_insert_expense,
+                          sql_insert_incomes, sql_records_10_expense,
+                          sql_records_10_incomes, sql_select_all_expenses_user,
                           sql_select_all_incomes_user, sql_select_category,
                           sql_select_id_category, sql_update_expense,
-                          sql_update_income, sql_for_graph_incomes)
+                          sql_update_income)
 from strings import (DELETE_RECORDS_ID, EDIT_RECORDS_ID, ERROR_NUMBER,
                      ERROR_NUMBER_ID, ERROR_RECORD_EMPTY, ERROR_RECORDS_ID,
                      HELP_MSG, RETURN_MENU)
@@ -63,7 +63,8 @@ def start(message: types.Message) -> None:
 
     bot.send_message(
         chat_id=message.chat.id,
-        text=f'Привет, {name}. Выберите опцию:',
+        text=f'Привет, {name}!\n Я бюджет-трекер для подробной '
+             f'информации используй команду /help. Выберите опцию:',
         reply_markup=keyboard,
     )
     add_user(message.chat.id)
@@ -116,8 +117,9 @@ def process_action(message: types.Message,
     """Функции для Дохода/Расхода"""
     if message.text == 'Добавить':
         hide_keyboard = types.ReplyKeyboardRemove()
-        text = 'Введите сумму расходов:' if \
-            action_type == 'expense' else 'Введите сумму дохода:'
+        text = 'Введите сумму расходов, указав число в рублях:' if \
+            action_type == 'expense' else 'Введите сумму дохода, ' \
+                                          'указав число в рублях:'
         bot.send_message(message.chat.id, text, reply_markup=hide_keyboard)
         bot.register_next_step_handler(message, adding_records, action_type)
     elif message.text == 'Редактировать':
@@ -187,7 +189,6 @@ def add_category(message: types.Message) -> None:
 def add_description_income(message: types.Message, amount: float) -> None:
     """Добавление новой записи дохода в БД"""
     sql_insert_incomes(amount, message.text, message.chat.id)
-
     bot.send_message(message.chat.id, 'Доход успешно добавлен!')
     start(message)
 
@@ -208,7 +209,6 @@ def edit_income(message: types.Message) -> None:
     bot.send_message(message.chat.id, response)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(RETURN_MENU)
-
     bot.send_message(message.chat.id,
                      EDIT_RECORDS_ID,
                      reply_markup=keyboard)
@@ -316,8 +316,10 @@ def process_expense_description(message: types.Message,
     else:
         bot.send_message(
             message.chat.id,
-            'Нет категорий. Пожалуйста, добавьте категорию сначала.')
-        return process_action(message, 'expense')
+            'Нет категорий. '
+            'Укажи новую категорию и попробуй заново создать запись о расходе')
+
+        return add_category(message)
 
 
 def process_expense_category(message: types.Message, amount: float,
@@ -333,7 +335,7 @@ def process_expense_category(message: types.Message, amount: float,
             break
 
     if category_id is None:
-        if selected_category == "Назад":
+        if selected_category == 'Назад':
             return process_action(message, 'expense')
         bot.send_message(message.chat.id,
                          'Категория не найдена. Пожалуйста, выберите снова.')
@@ -495,12 +497,9 @@ def process_delete_id_expense(message: types.Message) -> None:
 def ask_period(message: types.Message) -> None:
     """Кнопки для выбора периода"""
     markup = types.ReplyKeyboardMarkup(
-        resize_keyboard=True,
-        one_time_keyboard=True)
+        resize_keyboard=True)
     markup.add(*list(PERIODS.keys()))
-    bot.send_message(message.chat.id,
-                     'Выберите период:',
-                     reply_markup=markup)
+    bot.send_message(message.chat.id, 'Выберите период:', reply_markup=markup)
 
 
 @bot.message_handler(
@@ -508,10 +507,7 @@ def ask_period(message: types.Message) -> None:
 def handle_period_selection(message: types.Message) -> None:
     """Кнопки для выбора периода для получения статистики по Расходам"""
     user_periods = PERIODS.get(message.text)
-    markup = types.ReplyKeyboardMarkup(
-        resize_keyboard=True,
-        one_time_keyboard=True)
-
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('Таблица', 'Диаграмма', 'График', 'Меню')
     bot.send_message(message.chat.id,
                      'Выберите формат отображения:',
@@ -550,7 +546,7 @@ def show_table_statistics(message: types.Message,
     if not total_expenses:
         bot.send_message(message.chat.id, ERROR_RECORD_EMPTY)
         return start(message)
-    file_name = 'top_expenses.xlsx'
+    file_name = f'top_expenses_{client_id}.xlsx'
     top_expenses.to_excel(file_name, index=True)
 
     with open(file_name, 'rb') as file:
@@ -579,7 +575,7 @@ def show_graph_statistics(message: types.Message,
     choice_expenses['amount'] = pd.to_numeric(choice_expenses['amount'],
                                               errors='coerce')
     choice_expenses = choice_expenses.sort_values(by='date_added')
-    file_name = 'expenses.xlsx'
+    file_name = f'expenses_{client_id}.xlsx'
     choice_expenses.to_excel(file_name, index=True)
 
     plt.figure(figsize=(10, 6))
@@ -592,7 +588,7 @@ def show_graph_statistics(message: types.Message,
     plt.xticks(rotation=45)
     plt.grid()
     plt.legend()
-    graph_file_name = 'choice_expenses_graph.png'
+    graph_file_name = f'choice_expenses_graph_{client_id}.png'
     plt.tight_layout()
     plt.savefig(graph_file_name)
     plt.close()
@@ -629,7 +625,7 @@ def show_chart_statistics(message: types.Message,
     plt.title('Распределение расходов по категориям')
     plt.axis('equal')
 
-    graph_file_name = 'category_expenses_graph.png'
+    graph_file_name = f'category_expenses_graph_{client_id}.png'
     plt.savefig(graph_file_name)
     plt.close()
 
@@ -638,15 +634,15 @@ def show_chart_statistics(message: types.Message,
 
     total_expenses = category_expenses['total_amount'].sum()
     bot.send_message(message.chat.id,
-                     f"Всего расходов за выбранный период: {total_expenses}")
+                     f'Всего расходов за выбранный период: {total_expenses}')
     os.remove(graph_file_name)
     start(message)
 
 
-def show_table_statistics_incomes(message):
+def show_table_statistics_incomes(message: types.Message) -> None:
+    """Отображение статистики дохода за месяц"""
     client_id = message.chat.id
     choice_expenses = pd.read_sql_query(sql_for_graph_incomes(client_id), con)
-
     choice_expenses['date_added'] = pd.to_datetime(
         choice_expenses['date_added'])
     total_expenses = choice_expenses['amount'].sum()
@@ -656,7 +652,7 @@ def show_table_statistics_incomes(message):
     choice_expenses['amount'] = pd.to_numeric(choice_expenses['amount'],
                                               errors='coerce')
     choice_expenses = choice_expenses.sort_values(by='date_added')
-    file_name = 'incomes.xlsx'
+    file_name = f'incomes_{client_id}.xlsx'
     choice_expenses.to_excel(file_name, index=True)
 
     plt.figure(figsize=(10, 6))
@@ -669,7 +665,7 @@ def show_table_statistics_incomes(message):
     plt.xticks(rotation=45)
     plt.grid(axis='y')
 
-    graph_file_name = 'choice_incomes_graph.png'
+    graph_file_name = f'choice_incomes_graph_{client_id}.png'
     plt.tight_layout()
     plt.savefig(graph_file_name)
     plt.close()
@@ -677,13 +673,9 @@ def show_table_statistics_incomes(message):
     with open(file_name, 'rb') as file:
         bot.send_document(message.chat.id, file)
         bot.send_message(message.chat.id, 'Таблица доходов за месяц')
-
     with open(graph_file_name, 'rb') as graph_file:
-        bot.send_photo(message.chat.id, graph_file)
-
-    total_expenses = choice_expenses['amount'].sum()
-    bot.send_message(message.chat.id,
-                     f"Всего доходов за месяц: {total_expenses}")
+        bot.send_photo(message.chat.id, graph_file,
+                       caption=f'Всего доходов за месяц: {total_expenses}')
     os.remove(file_name)
     os.remove(graph_file_name)
     start(message)
