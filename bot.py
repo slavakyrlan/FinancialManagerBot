@@ -19,9 +19,9 @@ from db_functions import (add_user, db_connect, get_category_name,
                           sql_select_all_incomes_user, sql_select_category,
                           sql_select_id_category, sql_update_expense,
                           sql_update_income)
-from strings import (DELETE_RECORDS_ID, EDIT_RECORDS_ID, ERROR_NUMBER,
-                     ERROR_NUMBER_ID, ERROR_RECORD_EMPTY, ERROR_RECORDS_ID,
-                     HELP_MSG, RETURN_MENU)
+from strings import (send_instruction, DELETE_RECORDS_ID, EDIT_RECORDS_ID,
+                     ERROR_NUMBER, ERROR_NUMBER_ID, ERROR_RECORD_EMPTY,
+                     ERROR_RECORDS_ID, HELP_MSG, RETURN_MENU)
 
 matplotlib.use('Agg')
 load_dotenv()
@@ -96,11 +96,11 @@ def send_action_keyboard(message: types.Message,
 
     if action_type == 'income':
         keyboard.add('Добавить', 'Редактировать', 'Удалить', 'Назад')
-        text = 'Введите сумму дохода:'
+        text = (send_instruction(message.text))
     elif action_type == 'expense':
         keyboard.add('Добавить', 'Редактировать', 'Удалить',
                      'Добавить категорию', 'Назад')
-        text = 'Выберите действие с расходом:'
+        text = (send_instruction(message.text))
     else:
         return start(message)
 
