@@ -1,11 +1,15 @@
+"""Код для создании БД."""
+
 import sqlite3
 
 
 def db_connect():
+    """Код для подключения к БД."""
     return sqlite3.connect('finance_bot.db', check_same_thread=False)
 
 
 def create_tables():
+    """Код для создании БД."""
     con = db_connect()
     cur = con.cursor()
     cur.execute(
@@ -55,6 +59,7 @@ def create_tables():
 
 
 def main():
+    """Код для запуска создания БД."""
     create_tables()
     print('Таблицы успешно созданы')
 

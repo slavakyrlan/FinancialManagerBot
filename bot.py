@@ -1,3 +1,5 @@
+"""Код для запуска бота."""
+
 import logging
 import os
 from typing import Dict, List, Literal, Tuple
@@ -19,9 +21,9 @@ from db_functions import (add_user, db_connect, get_category_name,
                           sql_select_all_incomes_user, sql_select_category,
                           sql_select_id_category, sql_update_expense,
                           sql_update_income)
-from strings import (send_instruction, DELETE_RECORDS_ID, EDIT_RECORDS_ID,
-                     ERROR_NUMBER, ERROR_NUMBER_ID, ERROR_RECORD_EMPTY,
-                     ERROR_RECORDS_ID, HELP_MSG, RETURN_MENU)
+from strings import (DELETE_RECORDS_ID, EDIT_RECORDS_ID, ERROR_NUMBER,
+                     ERROR_NUMBER_ID, ERROR_RECORD_EMPTY, ERROR_RECORDS_ID,
+                     HELP_MSG, RETURN_MENU, send_instruction)
 
 matplotlib.use('Agg')
 load_dotenv()
@@ -54,7 +56,7 @@ con = db_connect()
 
 @bot.message_handler(commands=['start'])
 def start(message: types.Message) -> None:
-    """Стартовое сообщение"""
+    """Стартовое сообщение."""
     name = message.from_user.first_name
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
@@ -63,8 +65,8 @@ def start(message: types.Message) -> None:
 
     bot.send_message(
         chat_id=message.chat.id,
-        text=f'Привет, {name}!\n Я бюджет-трекер для подробной '
-             f'информации используй команду /help. Выберите опцию:',
+        text=(f'Привет, {name}!\n Я бюджет-трекер для подробной '
+              'информации используй команду /help. Выберите опцию:'),
         reply_markup=keyboard,
     )
     add_user(message.chat.id)
@@ -72,13 +74,13 @@ def start(message: types.Message) -> None:
 
 @bot.message_handler(commands=['help'])
 def help_commands(message: types.Message) -> None:
-    """Помощь"""
+    """Помощь."""
     bot.reply_to(message, HELP_MSG)
 
 
 @bot.message_handler(func=lambda message: message.text in BUTTONS)
 def handle_option(message: types.Message) -> None:
-    """Меню бота"""
+    """Меню бота."""
     if message.text == 'Доход':
         send_action_keyboard(message, 'income')
     elif message.text == 'Расход':
@@ -91,7 +93,7 @@ def handle_option(message: types.Message) -> None:
 
 def send_action_keyboard(message: types.Message,
                          action_type: Literal['income', 'expense']) -> None:
-    """Кнопки у Дохода/Расхода"""
+    """Кнопки у Дохода/Расхода."""
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
     if action_type == 'income':
@@ -114,7 +116,7 @@ def send_action_keyboard(message: types.Message,
 
 def process_action(message: types.Message,
                    action_type: Literal['income', 'expense']) -> None:
-    """Функции для Дохода/Расхода"""
+    """Функции для Дохода/Расхода."""
     if message.text == 'Добавить':
         hide_keyboard = types.ReplyKeyboardRemove()
         text = 'Введите сумму расходов, указав число в рублях:' if \
@@ -141,7 +143,7 @@ def process_action(message: types.Message,
 
 def adding_records(message: types.Message,
                    action_type: Literal['income', 'expense']) -> None:
-    """Добавление записей для Дохода/Расхода"""
+    """Добавление записей для Дохода/Расхода."""
     try:
         amount = float(message.text.strip())
         if action_type == 'income':
@@ -162,7 +164,7 @@ def adding_records(message: types.Message,
 
 
 def add_category(message: types.Message) -> None:
-    """Добавление новой категории"""
+    """Добавление новой категории."""
     hide_keyboard = types.ReplyKeyboardRemove()
     bot.send_message(
         message.chat.id, 'Введите новую категорию:',
@@ -187,14 +189,14 @@ def add_category(message: types.Message) -> None:
 
 
 def add_description_income(message: types.Message, amount: float) -> None:
-    """Добавление новой записи дохода в БД"""
+    """Добавление новой записи дохода в БД."""
     sql_insert_incomes(amount, message.text, message.chat.id)
     bot.send_message(message.chat.id, 'Доход успешно добавлен!')
     start(message)
 
 
 def edit_income(message: types.Message) -> None:
-    """Лист последних 10 записей дохода -> изменение записи"""
+    """Лист последних 10 записей дохода -> изменение записи."""
     list_income = sql_records_10_incomes(message.chat.id)
     if not list_income:
         bot.send_message(message.chat.id,
@@ -216,7 +218,7 @@ def edit_income(message: types.Message) -> None:
 
 
 def edit_income_by_id(message: types.Message) -> None:
-    """Изменение записи Дохода по id"""
+    """Изменение записи Дохода по id."""
     if message.text == RETURN_MENU:
         return start(message)
     try:
@@ -235,7 +237,7 @@ def edit_income_by_id(message: types.Message) -> None:
 
 
 def process_new_amount(message: types.Message, income_id: int) -> None:
-    """Редактирование суммы у записи дохода"""
+    """Редактирование суммы у записи дохода."""
     try:
         new_amount = float(message.text)
         if new_amount < 1:
@@ -250,14 +252,14 @@ def process_new_amount(message: types.Message, income_id: int) -> None:
 
 def finalize_edit(message: types.Message,
                   income_id: int, amount: float) -> None:
-    """Редактирование описания у записи дохода"""
+    """Редактирование описания у записи дохода."""
     sql_update_income(amount, message.text, income_id)
     bot.send_message(message.chat.id, 'Доход успешно обновлен!')
     start(message)
 
 
 def delete_income(message: types.Message) -> None:
-    """Вывод всех записей дохода для удаления"""
+    """Вывод всех записей дохода для удаления."""
     list_income = sql_records_10_incomes(message.chat.id)
     if not list_income:
         bot.send_message(message.chat.id, 'Нет записей для удаления.')
@@ -278,7 +280,7 @@ def delete_income(message: types.Message) -> None:
 
 
 def process_delete_id(message: types.Message) -> None:
-    """Удаление записи Дохода"""
+    """Удаление записи Дохода."""
     if message.text == RETURN_MENU:
         return start(message)
     try:
@@ -299,7 +301,7 @@ def process_delete_id(message: types.Message) -> None:
 
 def process_expense_description(message: types.Message,
                                 amount: float) -> None:
-    """Добавление описания у новой записи расхода"""
+    """Добавление описания у новой записи расхода."""
     description = message.text.strip()
     categories = sql_all_category()
 
@@ -325,7 +327,7 @@ def process_expense_description(message: types.Message,
 def process_expense_category(message: types.Message, amount: float,
                              description: str,
                              categories: List[Tuple[int, str]]) -> None:
-    """Выбор категории у новой записи расхода"""
+    """Выбор категории у новой записи расхода."""
     selected_category = message.text.strip()
 
     category_id = None
@@ -349,7 +351,7 @@ def process_expense_category(message: types.Message, amount: float,
 
 
 def edit_expense(message: types.Message) -> None:
-    """Вывод 10 записей расхода -> для редактирования"""
+    """Вывод 10 записей расхода -> для редактирования."""
     list_expense = sql_records_10_expense(message.chat.id)
     if not list_expense:
         bot.send_message(message.chat.id,
@@ -372,7 +374,7 @@ def edit_expense(message: types.Message) -> None:
 
 
 def process_edit_id_expense(message: types.Message) -> None:
-    """Выбор записи расхода по id для редактирования"""
+    """Выбор записи расхода по id для редактирования."""
     if message.text == RETURN_MENU:
         return start(message)
     try:
@@ -393,7 +395,7 @@ def process_edit_id_expense(message: types.Message) -> None:
 
 def process_new_amount_expense(message: types.Message,
                                expense_id: int) -> None:
-    """Редактирование суммы у редактируемой записи"""
+    """Редактирование суммы у редактируемой записи."""
     try:
         new_amount = float(message.text)
         if new_amount < 1:
@@ -411,7 +413,7 @@ def process_new_amount_expense(message: types.Message,
 def process_new_category_expense(message: types.Message,
                                  expense_id: int,
                                  new_amount: float) -> None:
-    """Редактирование описания у редактируемой записи"""
+    """Редактирование описания у редактируемой записи."""
     new_description = message.text.strip()
     categories = sql_all_category()
     if categories:
@@ -435,7 +437,7 @@ def process_new_category_expense(message: types.Message,
 
 def finalize_edit_expense(message: types.Message, expense_id: int,
                           new_amount: float, new_description: str) -> None:
-    """Выбор категории для записи Расхода"""
+    """Выбор категории для записи Расхода."""
     category_result = sql_select_id_category(message.text)
     if category_result:
         sql_update_expense(new_amount, new_description,
@@ -452,19 +454,18 @@ def finalize_edit_expense(message: types.Message, expense_id: int,
 
 
 def delete_expense(message: types.Message) -> None:
-    """Вывод 10 записей расхода перед удалением"""
+    """Вывод 10 записей расхода перед удалением."""
     list_income = sql_records_10_expense(message.chat.id)
     if not list_income:
         bot.send_message(message.chat.id, 'Нет записей для удаления.')
         return start(message)
     response = 'Последние 10 записей:\n'
     for record in list_income:
-        print(record)
-        response += f'ID: {record[0]}, ' \
-                    f'Сумма: {record[1]}, ' \
-                    f'Описание: {record[2]}, ' \
-                    f'Категория: {record[3]}'\
-                    f'Дата: {record[4]}\n'
+        response += (f'ID: {record[0]}, '
+                     f'Сумма: {record[1]}, '
+                     f'Описание: {record[2]}, '
+                     f'Категория: {record[3]}'
+                     f'Дата: {record[4]}\n')
     bot.send_message(message.chat.id, response)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(RETURN_MENU)
@@ -475,7 +476,7 @@ def delete_expense(message: types.Message) -> None:
 
 
 def process_delete_id_expense(message: types.Message) -> None:
-    """Удаление записи Расхода"""
+    """Удаление записи Расхода."""
     if message.text == RETURN_MENU:
         return start(message)
     try:
@@ -495,7 +496,7 @@ def process_delete_id_expense(message: types.Message) -> None:
 
 
 def ask_period(message: types.Message) -> None:
-    """Кнопки для выбора периода"""
+    """Кнопки для выбора периода."""
     markup = types.ReplyKeyboardMarkup(
         resize_keyboard=True)
     markup.add(*list(PERIODS.keys()))
@@ -505,7 +506,7 @@ def ask_period(message: types.Message) -> None:
 @bot.message_handler(
     func=lambda message: message.text in list(PERIODS.keys()))
 def handle_period_selection(message: types.Message) -> None:
-    """Кнопки для выбора периода для получения статистики по Расходам"""
+    """Кнопки для выбора периода для получения статистики по Расходам."""
     user_periods = PERIODS.get(message.text)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('Таблица', 'Диаграмма', 'График', 'Меню')
@@ -518,7 +519,7 @@ def handle_period_selection(message: types.Message) -> None:
 
 def handle_format_selection(message: types.Message,
                             user_periods: Dict[str, str]) -> None:
-    """Выбор формата вывода статистики"""
+    """Выбор формата вывода статистики."""
     try:
         selected_format = message.text
         if selected_format == 'Таблица':
@@ -538,7 +539,7 @@ def handle_format_selection(message: types.Message,
 
 def show_table_statistics(message: types.Message,
                           user_periods: Dict[str, str]) -> None:
-    """Статистика в виде таблице (топ 5 больших затрат)"""
+    """Статистика в виде таблице (топ 5 больших затрат)."""
     client_id = message.chat.id
     top_expenses = pd.read_sql_query(
         sql_for_table(user_periods, client_id), con)
@@ -560,7 +561,7 @@ def show_table_statistics(message: types.Message,
 
 def show_graph_statistics(message: types.Message,
                           user_periods: Dict[str, str]) -> None:
-    """Статистика в виде графика"""
+    """Статистика в виде графика."""
     client_id = message.chat.id
     choice_expenses = pd.read_sql_query(
         sql_for_graph(user_periods, client_id), con)
@@ -604,7 +605,7 @@ def show_graph_statistics(message: types.Message,
 
 def show_chart_statistics(message: types.Message,
                           user_periods: Dict[str, str]) -> None:
-    """Статистика в виде круговой диаграммы с распределением по категориям"""
+    """Статистика в виде круговой диаграммы с распределением по категориям."""
     client_id = message.chat.id
     category_expenses = pd.read_sql_query(
         sql_for_chart(user_periods, client_id), con)
@@ -640,7 +641,7 @@ def show_chart_statistics(message: types.Message,
 
 
 def show_table_statistics_incomes(message: types.Message) -> None:
-    """Отображение статистики дохода за месяц"""
+    """Отображение статистики дохода за месяц."""
     client_id = message.chat.id
     choice_expenses = pd.read_sql_query(sql_for_graph_incomes(client_id), con)
     choice_expenses['date_added'] = pd.to_datetime(
@@ -683,6 +684,7 @@ def show_table_statistics_incomes(message: types.Message) -> None:
 
 @bot.message_handler(content_types=ALL_CONTENT_TYPES)
 def error_message(message: types.Message) -> None:
+    """Отправка сообщения при некорректном запросе."""
     chat = message.chat
     chat_id = chat.id
     bot.send_photo(chat.id, get_new_image())
@@ -691,6 +693,7 @@ def error_message(message: types.Message) -> None:
 
 
 def get_new_image():
+    """Получение фотографий."""
     try:
         response = requests.get('https://api.thecatapi.com/v1/images/search')
     except Exception as error:
@@ -703,6 +706,7 @@ def get_new_image():
 
 
 def main():
+    """Запсук бота."""
     bot.polling(none_stop=True)
 
 
